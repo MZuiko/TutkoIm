@@ -4,9 +4,9 @@ import hu.elte.szakdolgozat.services.DuplicateException;
 import hu.elte.szakdolgozat.services.InfrastructureException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 public class MysqlService implements Mysql {
 
@@ -14,13 +14,14 @@ public class MysqlService implements Mysql {
     private final String DB_URL;
     private final String USER;
     private final String PASSWORD;
-    private final Integer DUPLICATE_ERROR_CODE = 1062;
-    private static Connection connection;
+    private final Integer DUPLICATE_ERROR_CODE;
+    private Connection connection;
 
     private MysqlService() {
-        DB_URL = "jdbc:mysql://localhost:3306/personal";
-        USER = "jano";
-        PASSWORD = "asd";
+        this.DB_URL = "jdbc:mysql://localhost:3306/tutkoim";
+        this.USER = "admin";
+        this.PASSWORD = "asd";
+        this.DUPLICATE_ERROR_CODE = 1062;
         try {
             driverRegister();
             connection = connect();
@@ -56,23 +57,21 @@ public class MysqlService implements Mysql {
     }
 
     @Override
-    public ResultSet query(String sql) throws InfrastructureException {
+    public ResultSet query(PreparedStatement stmt) throws InfrastructureException {
         try {
-            Statement stmt = connection.createStatement();
-            return stmt.executeQuery(sql);
+            return stmt.executeQuery();
         } catch (SQLException se) {
             throw new InfrastructureException("unable to execute query", se);
         }
     }
 
     @Override
-    public void insertRow(String sql) throws InfrastructureException, DuplicateException {
+    public void insertRow(PreparedStatement stmt) throws InfrastructureException, DuplicateException {
         try {
-            Statement stmt = connection.createStatement();
-            stmt.executeUpdate(sql);
+            stmt.executeUpdate();
         } catch (SQLException se) {
             if (se.getErrorCode() == DUPLICATE_ERROR_CODE) {
-                throw new DuplicateException("username already exists", se);
+                throw new DuplicateException("unable to insert", se);
             } else {
                 throw new InfrastructureException("unable to insert", se);
             }
@@ -80,13 +79,26 @@ public class MysqlService implements Mysql {
     }
 
     @Override
-    public void deleteRow(String sql) throws InfrastructureException {
+    public void updateRow(PreparedStatement stmt) throws InfrastructureException {
         try {
-            Statement stmt = connection.createStatement();
-            stmt.executeUpdate(sql);
+            stmt.executeUpdate();
+        } catch (SQLException se) {
+            throw new InfrastructureException("unable to update", se);
+        }
+    }
+
+    @Override
+    public void deleteRow(PreparedStatement stmt) throws InfrastructureException {
+        try {
+            stmt.executeUpdate();
         } catch (SQLException se) {
             throw new InfrastructureException("unable to delete", se);
         }
+    }
+
+    @Override
+    public Connection getConnection() {
+        return connection;
     }
 
     @Override

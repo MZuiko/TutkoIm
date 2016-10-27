@@ -8,7 +8,11 @@ public class User {
     private Integer id;
     private String userName;
     private String password;
-    private String realName;
+    private String firstName;
+    private String lastName;
+    private String status;
+    private String ip;
+    private Integer port;
 
     public User() {
     }
@@ -37,12 +41,44 @@ public class User {
         this.password = password;
     }
 
-    public String getRealName() {
-        return realName;
+    public String getFirstName() {
+        return firstName;
     }
 
-    public void setRealName(String realName) {
-        this.realName = realName;
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
     }
 
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
+    public Integer getPort() {
+        return port;
+    }
+
+    public void setPort(Integer port) {
+        this.port = port;
+    }
+    
 }
