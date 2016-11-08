@@ -168,11 +168,10 @@ public class UserManagerService implements UserManager {
         List<User> userList = new ArrayList();
         try {
             String select = "select username, firstname, lastname, status "
-                    + "from users where username = (select user1 from friends "
-                    + "where user2 = ? and accepted = 'yes') UNION "
-                    + "select username, firstname, lastname, status "
-                    + "from users where username = (select user2 from friends "
-                    + "where user1 = ? and accepted = 'yes');";
+                    + "from users where username in (select user1 from friends "
+                    + "where user2 = ? and accepted = 'yes') OR username in "
+                    + "(select user2 from friends where user1 = ? and "
+                    + "accepted = 'yes');";
             PreparedStatement stmt;
             stmt = mysqlService.getConnection().prepareStatement(select);
             stmt.setString(1, userName);
