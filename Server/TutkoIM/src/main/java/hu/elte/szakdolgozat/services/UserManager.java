@@ -7,8 +7,6 @@ public interface UserManager {
 
     void createUser(User user) throws ValidationException, InfrastructureException;
 
-    List<User> getUsers() throws InfrastructureException;
-
     User getUser(String userName) throws InfrastructureException;
 
     void deleteUser(String userName) throws InfrastructureException;
@@ -17,5 +15,13 @@ public interface UserManager {
 
     void logOut(String userName) throws InfrastructureException;
 
-    void addFriend(String myName, String friendName) throws InfrastructureException, DuplicateException;
+    void addFriend(String user1, String user2) throws InfrastructureException;
+
+    List<User> getFriends(String userName) throws InfrastructureException;
+
+    void acceptFriend(String user1, String user2) throws InfrastructureException;
+
+    public List<User> getAccept(String userName) throws InfrastructureException;
+
+    void removeFriend(String user1, String user2) throws InfrastructureException;
 }

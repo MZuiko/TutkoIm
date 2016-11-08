@@ -19,7 +19,7 @@ public class UserManagerService implements UserManager {
     }
 
     public static synchronized UserManagerService getInstance() {
-        if (INSTANCE == null) {
+        if (null == INSTANCE) {
             INSTANCE = new UserManagerService();
         }
         return INSTANCE;
@@ -28,7 +28,9 @@ public class UserManagerService implements UserManager {
     @Override
     public void createUser(User user) throws ValidationException, InfrastructureException {
         if (null == user.getUserName() || null == user.getPassword()
-                || null == user.getFirstName() || null == user.getLastName()) {
+                || null == user.getFirstName() || null == user.getLastName()
+                || "".equals(user.getUserName()) || "".equals(user.getPassword())
+                || "".equals(user.getFirstName()) || "".equals(user.getLastName())) {
             throw new ValidationException("username, password and name are required");
         } else if (3 > user.getUserName().length()) {
             throw new ValidationException("username is too short");
@@ -59,37 +61,13 @@ public class UserManagerService implements UserManager {
                 stmt.setString(4, user.getLastName());
                 mysqlService.insertRow(stmt);
             } catch (NoSuchAlgorithmException nsae) {
-                throw new RuntimeException("password cannot be created, please select an other one", nsae);
+                throw new RuntimeException("password cannot be created, "
+                        + "please select an other one", nsae);
             } catch (DuplicateException de) {
                 throw new ValidationException("username already exists", de);
             } catch (SQLException se) {
                 throw new InfrastructureException(se.getMessage(), se);
             }
-        }
-    }
-
-    @Override
-    public List<User> getUsers() throws InfrastructureException {
-        List<User> userList = new ArrayList();
-        try {
-            String select = "select * from users;";
-            PreparedStatement stmt = mysqlService.getConnection().prepareStatement(select);
-            ResultSet rs = mysqlService.query(stmt);
-            while (rs.next()) {
-                User user = new User();
-                user.setId(rs.getInt("id"));
-                user.setUserName(rs.getString("username"));
-                user.setPassword(rs.getString("password"));
-                user.setFirstName(rs.getString("firstname"));
-                user.setLastName(rs.getString("lastname"));
-                user.setStatus(rs.getString("status"));
-                user.setIp(rs.getString("ip"));
-                user.setPort(rs.getInt("port"));
-                userList.add(user);
-            }
-            return userList;
-        } catch (SQLException se) {
-            throw new InfrastructureException(se.getMessage(), se);
         }
     }
 
@@ -122,8 +100,13 @@ public class UserManagerService implements UserManager {
     @Override
     public void deleteUser(String userName) throws InfrastructureException {
         try {
-            String delete = "delete from users where username = ?;";
+            String delete = "delete from friends where user1 = ? or user2 = ?;";
             PreparedStatement stmt;
+            stmt = mysqlService.getConnection().prepareStatement(delete);
+            stmt.setString(1, userName);
+            stmt.setString(2, userName);
+            mysqlService.deleteRow(stmt);
+            delete = "delete from users where username = ?;";
             stmt = mysqlService.getConnection().prepareStatement(delete);
             stmt.setString(1, userName);
             mysqlService.deleteRow(stmt);
@@ -139,8 +122,8 @@ public class UserManagerService implements UserManager {
             if (null == u || !getHash(user.getPassword()).equals(u.getPassword())) {
                 throw new ValidationException("wrong username/password");
             } else {
-                String update = "update users set status = 'online', ip = ?, port = ?"
-                        + " where username = ?;";
+                String update = "update users set status = 'online', ip = ?, "
+                        + "port = ? where username = ?;";
                 PreparedStatement stmt;
                 stmt = mysqlService.getConnection().prepareStatement(update);
                 stmt.setString(1, user.getIp());
@@ -167,14 +150,98 @@ public class UserManagerService implements UserManager {
     }
 
     @Override
-    public void addFriend(String myName, String friendName)
-            throws InfrastructureException, DuplicateException {
+    public void addFriend(String user1, String user2) throws InfrastructureException {
         try {
-            String insert = "insert into friends values(NULL,?,?);";
+            String insert = "insert into friends (user1,user2) values(?,?);";
             PreparedStatement stmt;
             stmt = mysqlService.getConnection().prepareStatement(insert);
-            stmt.setString(1, myName);
-            stmt.setString(2, friendName);
+            stmt.setString(1, user1);
+            stmt.setString(2, user2);
+            mysqlService.updateRow(stmt);
+        } catch (SQLException se) {
+            throw new InfrastructureException(se.getMessage(), se);
+        }
+    }
+
+    @Override
+    public List<User> getFriends(String userName) throws InfrastructureException {
+        List<User> userList = new ArrayList();
+        try {
+            String select = "select username, firstname, lastname, status "
+                    + "from users where username = (select user1 from friends "
+                    + "where user2 = ? and accepted = 'yes') UNION "
+                    + "select username, firstname, lastname, status "
+                    + "from users where username = (select user2 from friends "
+                    + "where user1 = ? and accepted = 'yes');";
+            PreparedStatement stmt;
+            stmt = mysqlService.getConnection().prepareStatement(select);
+            stmt.setString(1, userName);
+            stmt.setString(2, userName);
+            ResultSet rs = mysqlService.query(stmt);
+            while (rs.next()) {
+                User user = new User();
+                user.setUserName(rs.getString("username"));
+                user.setFirstName(rs.getString("firstname"));
+                user.setLastName(rs.getString("lastname"));
+                user.setStatus(rs.getString("status"));
+                userList.add(user);
+            }
+            return userList;
+        } catch (SQLException se) {
+            throw new InfrastructureException(se.getMessage(), se);
+        }
+    }
+
+    @Override
+    public void acceptFriend(String user1, String user2) throws InfrastructureException {
+        try {
+            String update = "update friends set accepted = 'yes' where user1 = ?"
+                    + "and user2 = ?;";
+            PreparedStatement stmt;
+            stmt = mysqlService.getConnection().prepareStatement(update);
+            stmt.setString(1, user2);
+            stmt.setString(2, user1);
+            mysqlService.updateRow(stmt);
+        } catch (SQLException se) {
+            throw new InfrastructureException(se.getMessage(), se);
+        }
+    }
+
+    @Override
+    public List<User> getAccept(String userName) throws InfrastructureException {
+        List<User> userList = new ArrayList();
+        try {
+            String select = "select username, firstname, lastname "
+                    + "from users where username = (select user1 from friends "
+                    + "where user2 = ? and accepted = 'no');";
+            PreparedStatement stmt;
+            stmt = mysqlService.getConnection().prepareStatement(select);
+            stmt.setString(1, userName);
+            ResultSet rs = mysqlService.query(stmt);
+            while (rs.next()) {
+                User user = new User();
+                user.setUserName(rs.getString("username"));
+                user.setFirstName(rs.getString("firstname"));
+                user.setLastName(rs.getString("lastname"));
+                userList.add(user);
+            }
+            return userList;
+        } catch (SQLException se) {
+            throw new InfrastructureException(se.getMessage(), se);
+        }
+    }
+
+    @Override
+    public void removeFriend(String user1, String user2) throws InfrastructureException {
+        try {
+            String delete = "delete from friends where user1=? and user2=?"
+                    + " or  user1=? and user2=?;";
+            PreparedStatement stmt;
+            stmt = mysqlService.getConnection().prepareStatement(delete);
+            stmt.setString(1, user1);
+            stmt.setString(2, user2);
+            stmt.setString(3, user2);
+            stmt.setString(4, user1);
             mysqlService.updateRow(stmt);
         } catch (SQLException se) {
             throw new InfrastructureException(se.getMessage(), se);

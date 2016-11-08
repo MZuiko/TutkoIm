@@ -31,7 +31,7 @@ public class MysqlService implements Mysql {
     }
 
     public static synchronized MysqlService getInstance() {
-        if (INSTANCE == null) {
+        if (null == INSTANCE) {
             INSTANCE = new MysqlService();
         }
         return INSTANCE;
